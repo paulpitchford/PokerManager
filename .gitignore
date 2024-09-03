@@ -21,6 +21,8 @@ build/
 
 # OS files
 .DS_Store
-Thumbs.db > .gitignore
+Thumbs.db
+
+# Application settings
 PokerManager.API/appsettings.Development.json
 PokerManager.API/appsettings.json

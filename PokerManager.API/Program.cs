@@ -1,9 +1,17 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PokerManager.API.Data;
 using PokerManager.API.Services.Interfaces;
 using PokerManager.API.Services.Implementations;
 using PokerManager.API.Middleware;
 using Serilog;
+using System.Text;
+using Microsoft.OpenApi.Models;
+using FluentValidation.AspNetCore;
+using PokerManager.API.Validators;
+using FluentValidation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,39 +26,85 @@ builder.Host.UseSerilog();
 builder.Services.AddDbContext<PokerManagerContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Add Identity
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+{
+    options.Password.RequiredLength = 12;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireDigit = true;
+    options.Password.RequireNonAlphanumeric = true;
+})
+.AddEntityFrameworkStores<PokerManagerContext>()
+.AddDefaultTokenProviders();
+
+// Configure JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured.")))
+    };
+});
+
 // Register the TournamentService
 builder.Services.AddScoped<ITournamentService, TournamentService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    // ... other Swagger configurations ...
 
-// Add CorrelationId middleware
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement()
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+});
+
+// Fluent Validation
+builder.Services.AddFluentValidationAutoValidation()
+    .AddFluentValidationClientsideAdapters()
+    .AddValidatorsFromAssemblyContaining<TournamentValidator>();
+
+
+// Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
-
-// JWT configuration
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-var jwtKey = builder.Configuration["Jwt:Key"];
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
- .AddJwtBearer(options =>
- {
-     options.TokenValidationParameters = new TokenValidationParameters
-     {
-         ValidateIssuer = true,
-         ValidateAudience = true,
-         ValidateLifetime = true,
-         ValidateIssuerSigningKey = true,
-         ValidIssuer = jwtIssuer,
-         ValidAudience = jwtIssuer,
-         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-     };
- });
-
-// Use the custom middleware (place it early in the pipeline)
-app.UseRequestContextLogging();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -60,6 +114,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Use the custom middleware for request context logging
+app.UseRequestContextLogging();
 
 // Use Serilog request logging
 app.UseSerilogRequestLogging();

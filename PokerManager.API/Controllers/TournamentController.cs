@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PokerManager.API.Models;
 using PokerManager.API.Services.Interfaces;
@@ -5,6 +6,7 @@ using Serilog;
 
 namespace PokerManager.API.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class TournamentsController : ControllerBase
@@ -61,49 +63,33 @@ namespace PokerManager.API.Controllers
 
         // POST: api/Tournaments
         [HttpPost]
-        public async Task<ActionResult<Tournament>> CreateTournament(Tournament tournament)
+        public async Task<ActionResult<Tournament>> PostTournament(Tournament tournament)
         {
-            try
+            if (!ModelState.IsValid)
             {
-                var createdTournament = await _tournamentService.CreateTournamentAsync(tournament);
-                _logger.LogInformation("Created new tournament {@Tournament}", createdTournament);
-                return CreatedAtAction(nameof(GetTournament), new { id = createdTournament.Id }, createdTournament);
+                return BadRequest(ModelState);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred while creating a new tournament");
-                return StatusCode(500, "An error occurred while processing your request.");
-            }
+
+            var createdTournament = await _tournamentService.CreateTournamentAsync(tournament);
+            return CreatedAtAction(nameof(GetTournament), new { id = createdTournament.Id }, createdTournament);
         }
 
         // PUT: api/Tournaments/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTournament(int id, Tournament tournament)
+        public async Task<IActionResult> PutTournament(int id, Tournament tournament)
         {
             if (id != tournament.Id)
             {
-                return BadRequest("ID in URL does not match ID in the request body.");
+                return BadRequest();
             }
 
-            try
+            if (!ModelState.IsValid)
             {
-                await _tournamentService.UpdateTournamentAsync(tournament);
-                _logger.LogInformation("Updated tournament {@Tournament}", tournament);
-                return NoContent();
+                return BadRequest(ModelState);
             }
-            catch (Exception ex)
-            {
-                if (!await _tournamentService.TournamentExistsAsync(id))
-                {
-                    _logger.LogWarning("Attempted to update non-existent tournament with ID {TournamentId}", id);
-                    return NotFound($"Tournament with ID {id} not found.");
-                }
-                else
-                {
-                    _logger.LogError(ex, "Error occurred while updating tournament with ID {TournamentId}", id);
-                    return StatusCode(500, "An error occurred while processing your request.");
-                }
-            }
+
+            await _tournamentService.UpdateTournamentAsync(tournament);
+            return NoContent();
         }
 
         // DELETE: api/Tournaments/5

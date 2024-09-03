@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PokerManager.API.Data;
 
@@ -11,9 +12,11 @@ using PokerManager.API.Data;
 namespace PokerManager.API.Data.Migrations
 {
     [DbContext(typeof(PokerManagerContext))]
-    partial class PokerManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20240903153511_AddIdentity")]
+    partial class AddIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

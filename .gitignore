@@ -1,0 +1,24 @@
+echo # .NET Core
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+
+# React
+node_modules/
+build/
+.env
+
+# IDEs and editors
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db > .gitignore

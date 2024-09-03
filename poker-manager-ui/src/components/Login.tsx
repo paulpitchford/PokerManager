@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 function Login({ onLogin }: { onLogin: (token: string) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(''); // Clear any previous error messages
     const requestBody = { email: username, password };
     try {
       const response = await fetch('http://localhost:5145/api/auth/login', {
@@ -18,15 +20,16 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
         onLogin(data.token);
       } else {
         // Handle login error
-        console.error('Login failed');
+        setErrorMessage('Login failed. Please check your credentials and try again.');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      setErrorMessage('An error occurred while trying to log in. Please try again later.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
       <input
         type="text"
         value={username}

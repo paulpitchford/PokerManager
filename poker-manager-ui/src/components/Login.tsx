@@ -5,10 +5,12 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setErrorMessage(''); // Clear any previous error messages
+        setErrorMessage('');
+        setIsLoading(true);
         const requestBody = { email: username, password };
         try {
             const response = await fetch('http://localhost:5145/api/auth/login', {
@@ -20,11 +22,12 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
                 const data = await response.json();
                 onLogin(data.token);
             } else {
-                // Handle login error
                 setErrorMessage('Login failed. Please check your credentials and try again.');
             }
         } catch (error) {
             setErrorMessage('An error occurred while trying to log in. Please try again later.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -48,7 +51,9 @@ function Login({ onLogin }: { onLogin: (token: string) => void }) {
                         placeholder="Password"
                         required
                     />
-                    <button type="submit">Sign in</button>
+                    <button type="submit" disabled={isLoading}>
+                        {isLoading ? <span className="spinner"></span> : 'Sign in'}
+                    </button>
                 </form>
                 <div className="social-login">
                     <p>or sign in with</p>
